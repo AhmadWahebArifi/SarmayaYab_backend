@@ -23,6 +23,8 @@ class User extends Authenticatable
         'phone',
         'balance',
         'status',
+        'role',
+        'branch_id',
     ];
 
     /**
@@ -45,6 +47,21 @@ class User extends Authenticatable
         'password' => 'hashed',
         'balance' => 'decimal:2',
     ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function createdStockRequests()
+    {
+        return $this->hasMany(StockRequest::class, 'created_by');
+    }
+
+    public function reviewedStockRequests()
+    {
+        return $this->hasMany(StockRequest::class, 'reviewed_by');
+    }
 
     /**
      * Get the investments for the user.
