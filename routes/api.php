@@ -9,6 +9,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\StockRequestController;
+use App\Http\Controllers\InventoryAnalyticsController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -51,5 +52,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:admin,branch_manager,branch_staff')->group(function () {
         Route::post('/stock-requests/{stockRequest}/deliver', [StockRequestController::class, 'deliver']);
+    });
+
+    // Analytics Routes
+    Route::middleware('role:admin,warehouse_staff,branch_manager,branch_staff')->group(function () {
+        Route::get('/analytics/dashboard', [InventoryAnalyticsController::class, 'dashboard']);
+        Route::get('/analytics/product-suggestions', [InventoryAnalyticsController::class, 'productSuggestions']);
+        Route::get('/analytics/auto-reorder-suggestions', [InventoryAnalyticsController::class, 'autoReorderSuggestions']);
     });
 });
