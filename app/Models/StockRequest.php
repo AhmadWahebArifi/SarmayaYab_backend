@@ -14,16 +14,28 @@ class StockRequest extends Model
         'branch_id',
         'created_by',
         'status',
+        'priority',
+        'expected_delivery_date',
         'note',
+        'reason',
+        'total_value',
+        'cost_center',
         'reviewed_by',
         'reviewed_at',
+        'rejection_reason',
+        'approval_notes',
         'dispatched_at',
+        'tracking_number',
+        'estimated_delivery',
         'delivered_at',
     ];
 
     protected $casts = [
+        'expected_delivery_date' => 'date',
+        'total_value' => 'decimal:2',
         'reviewed_at' => 'datetime',
         'dispatched_at' => 'datetime',
+        'estimated_delivery' => 'datetime',
         'delivered_at' => 'datetime',
     ];
 
