@@ -24,3 +24,11 @@ Route::get('/', function () {
 Route::get('/test', function () {
     return 'Simple test route works!';
 });
+
+// Serve React SPA - catch all other routes and return the React app
+Route::get('/{any}', function () {
+    return response()->json([
+        'message' => 'React frontend should be served here',
+        'note' => 'Configure your web server to serve the React build from public directory'
+    ]);
+})->where('any', '.*');
