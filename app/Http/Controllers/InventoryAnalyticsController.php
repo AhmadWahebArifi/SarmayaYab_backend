@@ -64,17 +64,21 @@ class InventoryAnalyticsController extends Controller
     private function getLowStockAlerts(?int $branchId): array
     {
         if ($branchId) {
-            return BranchInventory::with('product')
-                ->where('branch_id', $branchId)
-                ->whereHas('product', function ($q) {
-                    $q->whereRaw('branch_inventories.quantity <= products.reorder_point');
-                })
+            return BranchInventory::query()
+                ->with('product')
+                ->join('products', 'products.id', '=', 'branch_inventories.product_id')
+                ->where('branch_inventories.branch_id', $branchId)
+                ->whereColumn('branch_inventories.quantity', '<=', 'products.reorder_point')
+                ->select('branch_inventories.*')
                 ->get()
                 ->toArray();
         }
 
-        return WarehouseInventory::with('product')
-            ->whereRaw('warehouse_inventories.quantity <= products.reorder_point')
+        return WarehouseInventory::query()
+            ->with('product')
+            ->join('products', 'products.id', '=', 'warehouse_inventories.product_id')
+            ->whereColumn('warehouse_inventories.quantity', '<=', 'products.reorder_point')
+            ->select('warehouse_inventories.*')
             ->get()
             ->toArray();
     }
@@ -116,24 +120,31 @@ class InventoryAnalyticsController extends Controller
         $branchId = $user->branch_id;
 
         // Get frequently requested products for this branch
-        $frequentProducts = StockRequest::select('products.*', DB::raw('COUNT(*) as request_count'))
+        $frequentProducts = StockRequest::select(
+                'products.id',
+                'products.name',
+                'products.sku',
+                'products.selling_price',
+                DB::raw('COUNT(*) as request_count')
+            )
             ->join('stock_request_items', 'stock_requests.id', '=', 'stock_request_items.stock_request_id')
             ->join('products', 'stock_request_items.product_id', '=', 'products.id')
             ->where('stock_requests.branch_id', $branchId)
             ->where('stock_requests.created_at', '>=', now()->subDays(60))
-            ->groupBy('products.id')
+            ->groupBy('products.id', 'products.name', 'products.sku', 'products.selling_price')
             ->orderBy('request_count', 'desc')
             ->limit(5)
             ->get();
 
         // Get products with low stock at branch
-        $lowStockProducts = Product::with(['branchInventory' => function ($q) use ($branchId) {
+        $lowStockProducts = Product::query()
+            ->with(['branchInventory' => function ($q) use ($branchId) {
                 $q->where('branch_id', $branchId);
             }])
-            ->whereHas('branchInventory', function ($q) use ($branchId) {
-                $q->where('branch_id', $branchId)
-                  ->whereRaw('branch_inventories.quantity <= products.reorder_point');
-            })
+            ->join('branch_inventories', 'branch_inventories.product_id', '=', 'products.id')
+            ->where('branch_inventories.branch_id', $branchId)
+            ->whereColumn('branch_inventories.quantity', '<=', 'products.reorder_point')
+            ->select('products.*')
             ->get();
 
         return response()->json([
