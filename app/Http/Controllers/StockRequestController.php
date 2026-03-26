@@ -11,6 +11,7 @@ use App\Models\StockRequestItem;
 use App\Models\WarehouseInventory;
 use App\Models\BranchInventory;
 use App\Models\StockMovement;
+use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,12 +51,24 @@ class StockRequestController extends Controller
 
         DB::beginTransaction();
         try {
+            // Calculate total value
+            $totalValue = 0;
+            foreach ($validated['items'] as $item) {
+                $product = Product::find($item['product_id']);
+                $totalValue += $product->selling_price * $item['requested_qty'];
+            }
+
             $stockRequest = StockRequest::create([
                 'code' => 'SR-' . now()->format('YmdHis') . '-' . rand(100, 999),
                 'branch_id' => $user->branch_id,
                 'created_by' => $user->id,
                 'status' => 'pending',
+                'priority' => $validated['priority'] ?? 'normal',
+                'expected_delivery_date' => $validated['expected_delivery_date'] ?? null,
                 'note' => $validated['note'] ?? null,
+                'reason' => $validated['reason'] ?? null,
+                'total_value' => $totalValue,
+                'cost_center' => $validated['cost_center'] ?? null,
             ]);
 
             foreach ($validated['items'] as $item) {
@@ -97,6 +110,7 @@ class StockRequestController extends Controller
                 'status' => 'approved',
                 'reviewed_by' => $user->id,
                 'reviewed_at' => now(),
+                'approval_notes' => $request->validated()['approval_notes'] ?? null,
             ]);
 
             foreach ($request->validated()['items'] as $item) {
@@ -125,10 +139,15 @@ class StockRequestController extends Controller
             return response()->json(['message' => 'Request is not pending'], 422);
         }
 
+        $validated = $request->validate([
+            'rejection_reason' => 'required|string|max:500'
+        ]);
+
         $stockRequest->update([
             'status' => 'rejected',
             'reviewed_by' => $user->id,
             'reviewed_at' => now(),
+            'rejection_reason' => $validated['rejection_reason'],
         ]);
 
         return response()->json(['message' => 'Request rejected']);
@@ -148,6 +167,9 @@ class StockRequestController extends Controller
 
         DB::beginTransaction();
         try {
+            $trackingNumber = 'TRK-' . now()->format('YmdHis') . '-' . rand(1000, 9999);
+            $estimatedDelivery = now()->addDays(3); // Default 3 days delivery
+
             foreach ($stockRequest->items as $item) {
                 $dispatchQty = $item->approved_qty ?? 0;
 
@@ -176,10 +198,16 @@ class StockRequestController extends Controller
             $stockRequest->update([
                 'status' => 'dispatched',
                 'dispatched_at' => now(),
+                'tracking_number' => $trackingNumber,
+                'estimated_delivery' => $estimatedDelivery,
             ]);
 
             DB::commit();
-            return response()->json(['message' => 'Request dispatched']);
+            return response()->json([
+                'message' => 'Request dispatched',
+                'tracking_number' => $trackingNumber,
+                'estimated_delivery' => $estimatedDelivery
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => $e->getMessage()], 422);
