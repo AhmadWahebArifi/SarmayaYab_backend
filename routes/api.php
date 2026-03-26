@@ -33,8 +33,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/transactions/summary', [TransactionController::class, 'summary']);
 
     // Inventory system routes
+    // Allow all inventory roles to READ products
+    Route::middleware('role:admin,warehouse_staff,branch_manager,branch_staff')->group(function () {
+        Route::get('/products', [ProductController::class, 'index']);
+        Route::get('/products/{product}', [ProductController::class, 'show']);
+    });
+
+    // Only admin/warehouse can manage products + branches
     Route::middleware('role:admin,warehouse_staff')->group(function () {
-        Route::apiResource('products', ProductController::class);
+        Route::post('/products', [ProductController::class, 'store']);
+        Route::put('/products/{product}', [ProductController::class, 'update']);
+        Route::patch('/products/{product}', [ProductController::class, 'update']);
+        Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+
         Route::apiResource('branches', BranchController::class);
     });
 
