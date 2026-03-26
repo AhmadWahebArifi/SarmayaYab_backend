@@ -14,6 +14,10 @@ class StoreStockRequestRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'priority' => ['nullable', 'string', 'in:urgent,normal,low'],
+            'expected_delivery_date' => ['nullable', 'date'],
+            'reason' => ['nullable', 'string', 'max:255'],
+            'cost_center' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:500'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
