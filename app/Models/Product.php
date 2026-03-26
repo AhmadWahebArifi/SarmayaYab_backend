@@ -36,6 +36,11 @@ class Product extends Model
         return $this->hasMany(BranchInventory::class);
     }
 
+    public function branchInventory()
+    {
+        return $this->hasMany(BranchInventory::class);
+    }
+
     public function stockRequestItems()
     {
         return $this->hasMany(StockRequestItem::class);
